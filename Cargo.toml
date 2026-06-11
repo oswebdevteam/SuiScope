@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/core",
+    "crates/cli",
+    "crates/dashboard",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["SuiScope Team"]
+description = "Move Contract Debug & Object Registry Tool for Sui Network"
+repository = "https://github.com/suiscope/suiscope"
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tracing = "0.1"
+thiserror = "1"
+chrono = { version = "0.4", features = ["serde"] }

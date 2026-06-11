@@ -1,0 +1,18 @@
+[package]
+name = "suiscope-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "Core library for SuiScope — SQLite registry, Sui RPC client, parser, error dictionary"
+
+[dependencies]
+rusqlite = { version = "0.31", features = ["bundled"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+toml = "0.8"
