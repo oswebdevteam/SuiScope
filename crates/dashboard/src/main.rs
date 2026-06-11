@@ -39,7 +39,7 @@ async fn main() {
         .route("/api/health", get(health_check))
         .route("/api/objects", get(list_objects))
         .route("/api/transactions", get(list_transactions))
-        // Serve static files from the React frontend (Engineer 3 / Designer will build this)
+        // Serve static files from the React frontend (Engineer 3 / Enginneer 2 to build this)
         .fallback_service(ServeDir::new("frontend/dist"))
         .layer(cors)
         .with_state(state);

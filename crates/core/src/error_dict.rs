@@ -32,48 +32,95 @@ impl ErrorDictionary {
     }
 
     fn fuzzy_match_move_abort(error_string: &str) -> Option<ErrorExplanation> {
-        // Very basic extraction of the abort code.
-        // In a real implementation, we'd use regex, but this works for the hackathon.
-        let parts: Vec<&str> = error_string.split("},").collect();
-        if parts.len() == 2 {
-            let code_part = parts[1].trim().trim_end_matches(')');
-            if let Ok(code) = code_part.parse::<u64>() {
-                // If we also know the module, we can be more specific.
-                // For now, let's map common framework codes.
-                return match code {
-                    0 => Some(ErrorExplanation {
-                        title: "Assertion Failed (Code 0)".into(),
-                        plain_english: "A basic assertion failed in the Move contract.".into(),
-                        likely_causes: vec!["The contract expected a condition to be true, but it was false.".into()],
-                        suggested_fixes: vec!["Check the contract source code for `assert!(..., 0)`.".into()],
-                    }),
-                    1 => Some(ErrorExplanation {
-                        title: "Not Authorized / Invalid Owner (Code 1)".into(),
-                        plain_english: "You do not have permission to perform this action.".into(),
-                        likely_causes: vec![
-                            "You are trying to mutate an object you do not own.".into(),
-                            "You forgot to pass a required capability object.".into(),
-                        ],
-                        suggested_fixes: vec![
-                            "Check the current owner of the object using `suiscope inspect <id>`.".into(),
-                            "Ensure your wallet is the active one in `sui client active-address`.".into(),
-                        ],
-                    }),
-                    2 => Some(ErrorExplanation {
-                        title: "Invalid Coin / Insufficient Balance (Code 2)".into(),
-                        plain_english: "The coin object provided doesn't have enough balance or is the wrong type.".into(),
-                        likely_causes: vec!["You are trying to pay for something with a coin that doesn't hold enough SUI.".into()],
-                        suggested_fixes: vec!["Merge your coin objects or use a different one.".into()],
-                    }),
-                    _ => Some(ErrorExplanation {
-                        title: format!("Move Abort (Code {})", code),
-                        plain_english: "The smart contract aborted execution intentionally.".into(),
-                        likely_causes: vec!["A requirement in the contract was not met.".into()],
-                        suggested_fixes: vec![
-                            "Look up the module source code and find the `abort` or `assert!` that throws this code.".into()
-                        ],
-                    }),
-                };
+        static RE_MOD: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        // Regex to extract module name and abort code
+        let re_mod = RE_MOD.get_or_init(|| {
+            regex::Regex::new(r#"MoveAbort\(.*name:\s*Identifier\("([^"]+)"\).*\},\s*(\d+)\)"#).unwrap()
+        });
+
+        static RE_FALLBACK: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+        let re_fallback = RE_FALLBACK.get_or_init(|| {
+            regex::Regex::new(r"MoveAbort\(.*\},\s*(\d+)\)").unwrap()
+        });
+
+        if let Some(captures) = re_mod.captures(error_string) {
+            let module_name = captures.get(1).map(|m| m.as_str()).unwrap_or("");
+            if let Some(code_match) = captures.get(2) {
+                if let Ok(code) = code_match.as_str().parse::<u64>() {
+                    return match (module_name, code) {
+                        ("coin", 2) => Some(ErrorExplanation {
+                            title: "Insufficient Coin Balance (Code 2)".into(),
+                            plain_english: "The coin object provided doesn't have enough balance.".into(),
+                            likely_causes: vec!["You are trying to pay for something with a coin that doesn't hold enough SUI.".into()],
+                            suggested_fixes: vec!["Merge your coin objects or use a different one.".into()],
+                        }),
+                        ("object", 1) | ("transfer", 1) => Some(ErrorExplanation {
+                            title: "Not Authorized / Invalid Owner (Code 1)".into(),
+                            plain_english: "You do not have permission to perform this action.".into(),
+                            likely_causes: vec![
+                                "You are trying to mutate an object you do not own.".into(),
+                                "You forgot to pass a required capability object.".into(),
+                            ],
+                            suggested_fixes: vec![
+                                "Check the current owner of the object using `suiscope inspect <id>`.".into(),
+                                "Ensure your wallet is the active one in `sui client active-address`.".into(),
+                            ],
+                        }),
+                        (_, 0) => Some(ErrorExplanation {
+                            title: "Assertion Failed (Code 0)".into(),
+                            plain_english: "A basic assertion failed in the Move contract.".into(),
+                            likely_causes: vec!["The contract expected a condition to be true, but it was false.".into()],
+                            suggested_fixes: vec!["Check the contract source code for `assert!(..., 0)`.".into()],
+                        }),
+                        _ => Some(ErrorExplanation {
+                            title: format!("Move Abort in '{}' (Code {})", module_name, code),
+                            plain_english: "The smart contract aborted execution intentionally.".into(),
+                            likely_causes: vec!["A requirement in the contract was not met.".into()],
+                            suggested_fixes: vec![
+                                format!("Look up the `{}` module source code and find the `abort` or `assert!` that throws code {}.", module_name, code)
+                            ],
+                        }),
+                    };
+                }
+            }
+        } else if let Some(captures) = re_fallback.captures(error_string) {
+            if let Some(code_match) = captures.get(1) {
+                if let Ok(code) = code_match.as_str().parse::<u64>() {
+                    return match code {
+                        0 => Some(ErrorExplanation {
+                            title: "Assertion Failed (Code 0)".into(),
+                            plain_english: "A basic assertion failed in the Move contract.".into(),
+                            likely_causes: vec!["The contract expected a condition to be true, but it was false.".into()],
+                            suggested_fixes: vec!["Check the contract source code for `assert!(..., 0)`.".into()],
+                        }),
+                        1 => Some(ErrorExplanation {
+                            title: "Not Authorized / Invalid Owner (Code 1)".into(),
+                            plain_english: "You do not have permission to perform this action.".into(),
+                            likely_causes: vec![
+                                "You are trying to mutate an object you do not own.".into(),
+                                "You forgot to pass a required capability object.".into(),
+                            ],
+                            suggested_fixes: vec![
+                                "Check the current owner of the object using `suiscope inspect <id>`.".into(),
+                                "Ensure your wallet is the active one in `sui client active-address`.".into(),
+                            ],
+                        }),
+                        2 => Some(ErrorExplanation {
+                            title: "Invalid Coin / Insufficient Balance (Code 2)".into(),
+                            plain_english: "The coin object provided doesn't have enough balance or is the wrong type.".into(),
+                            likely_causes: vec!["You are trying to pay for something with a coin that doesn't hold enough SUI.".into()],
+                            suggested_fixes: vec!["Merge your coin objects or use a different one.".into()],
+                        }),
+                        _ => Some(ErrorExplanation {
+                            title: format!("Move Abort (Code {})", code),
+                            plain_english: "The smart contract aborted execution intentionally.".into(),
+                            likely_causes: vec!["A requirement in the contract was not met.".into()],
+                            suggested_fixes: vec![
+                                "Look up the module source code and find the `abort` or `assert!` that throws this code.".into()
+                            ],
+                        }),
+                    };
+                }
             }
         }
 
@@ -176,6 +223,6 @@ mod tests {
     fn test_fuzzy_match_move_abort_unknown_code() {
         let err = "MoveAbort(MoveLocation { module: ModuleId { address: 000...2, name: Identifier(\"object\") }, function: 1, instruction: 10, function_name: Some(\"new\") }, 999)";
         let expl = ErrorDictionary::lookup(err).unwrap();
-        assert_eq!(expl.title, "Move Abort (Code 999)");
+        assert_eq!(expl.title, "Move Abort in 'object' (Code 999)");
     }
 }

@@ -16,3 +16,4 @@ chrono.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 toml = "0.8"
+regex = "1"
