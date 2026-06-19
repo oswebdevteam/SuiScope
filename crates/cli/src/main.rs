@@ -59,7 +59,11 @@ enum Commands {
         error: String,
     },
     /// Sync your local registry to Walrus
-    Sync,
+    Sync {
+        /// Import and merge a registry from Walrus using its blob ID
+        #[arg(long, short)]
+        import: Option<String>,
+    },
     /// Launch the SuiScope web dashboard
     Dashboard,
 }
@@ -78,7 +82,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Tag { object_id, alias } => tag::execute(&object_id, &alias)?,
         Commands::Inspect { id_or_alias } => inspect::execute(&id_or_alias).await?,
         Commands::Explain { error } => explain::execute(&error)?,
-        Commands::Sync => sync::execute()?,
+        Commands::Sync { import } => sync::execute(import).await?,
         Commands::Dashboard => dashboard::execute()?,
     }
 

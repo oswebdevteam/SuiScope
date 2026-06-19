@@ -67,19 +67,19 @@ pub async fn execute(id_or_alias: &str) -> Result<()> {
     if let Some(content) = state.content {
         let mut rows = Vec::new();
         
-        if let Some(obj_map) = content.as_object() {
+        if let serde_json::Value::Object(obj_map) = content {
             for (k, v) in obj_map {
                 // Formatting JSON values to string
-                let val_str = if v.is_string() {
-                    v.as_str().unwrap().to_string()
+                let val_str = if let serde_json::Value::String(s) = v {
+                    s
                 } else if v.is_object() || v.is_array() {
-                    serde_json::to_string(v).unwrap_or_else(|_| "[complex object]".to_string())
+                    serde_json::to_string(&v).unwrap_or_else(|_| "[complex object]".to_string())
                 } else {
                     v.to_string()
                 };
 
                 rows.push(FieldRow {
-                    key: k.clone(),
+                    key: k,
                     value: val_str,
                 });
             }

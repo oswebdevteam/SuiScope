@@ -111,9 +111,9 @@ pub async fn execute(path: PathBuf, gas_budget: Option<u64>) -> Result<()> {
 
     let mut rows: Vec<PublishedRow> = Vec::new();
 
-    for obj in &result.created_objects {
+    for obj in result.created_objects {
         // Auto-assign an alias based on type, if possible.
-        let default_alias = auto_alias(obj);
+        let default_alias = auto_alias(&obj);
         
         let tracked = TrackedObject {
             id: None,
@@ -134,9 +134,9 @@ pub async fn execute(path: PathBuf, gas_budget: Option<u64>) -> Result<()> {
 
         rows.push(PublishedRow {
             alias: default_alias.unwrap_or_else(|| "-".to_string()),
-            object_id: obj.object_id.clone(),
-            object_type: obj.object_type.clone(),
-            owner: obj.owner.clone().unwrap_or_else(|| "-".to_string()),
+            object_id: obj.object_id,
+            object_type: obj.object_type,
+            owner: obj.owner.unwrap_or_else(|| "-".to_string()),
         });
     }
 
