@@ -21,12 +21,13 @@ pub fn execute(full_ids: bool) -> Result<()> {
     print_header("Tracked Objects");
 
     let config = SuiScopeConfig::load()?;
-    let network = config.sui_network().as_str().to_string();
+    let sui_network = config.sui_network();
+    let network = sui_network.as_str();
     
     let db_path = SuiScopeConfig::db_path()?;
     let registry = Registry::open(&db_path)?;
 
-    let objects = registry.list_objects(&network)?;
+    let objects = registry.list_objects(network)?;
 
     if objects.is_empty() {
         print_info(&format!("No objects tracked for network '{}'. Run `suiscope publish`.", network));
@@ -36,13 +37,13 @@ pub fn execute(full_ids: bool) -> Result<()> {
     let mut rows = Vec::new();
     for obj in objects {
         let display_id = if full_ids {
-            obj.object_id.clone()
+            obj.object_id
         } else {
             truncate_id(&obj.object_id, 4)
         };
 
         // Format relative time if possible, otherwise use the raw SQLite string
-        let display_time = if let Some(ref created) = obj.created_at {
+        let display_time = if let Some(created) = obj.created_at {
             if let Ok(dt) = created.parse::<DateTime<Utc>>() {
                 let now = Utc::now();
                 let diff = now.signed_duration_since(dt);
@@ -54,7 +55,7 @@ pub fn execute(full_ids: bool) -> Result<()> {
                     format!("{}d ago", diff.num_days())
                 }
             } else {
-                created.clone()
+                created
             }
         } else {
             "-".to_string()

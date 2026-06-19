@@ -25,6 +25,14 @@ pub struct SuiScopeConfig {
     /// Path to the `sui` binary. Defaults to `"sui"` (assumes it's on PATH).
     #[serde(default)]
     pub sui_binary: Option<String>,
+
+    /// Walrus publisher base URL.
+    #[serde(default = "default_walrus_publisher")]
+    pub walrus_publisher: String,
+
+    /// Walrus aggregator base URL.
+    #[serde(default = "default_walrus_aggregator")]
+    pub walrus_aggregator: String,
 }
 
 fn default_network() -> String {
@@ -32,6 +40,12 @@ fn default_network() -> String {
 }
 fn default_gas_budget() -> u64 {
     100_000_000
+}
+fn default_walrus_publisher() -> String {
+    "https://publisher.walrus-testnet.walrus.space".to_string()
+}
+fn default_walrus_aggregator() -> String {
+    "https://aggregator.walrus-testnet.walrus.space".to_string()
 }
 
 impl Default for SuiScopeConfig {
@@ -41,6 +55,8 @@ impl Default for SuiScopeConfig {
             rpc_url: None,
             gas_budget: default_gas_budget(),
             sui_binary: None,
+            walrus_publisher: default_walrus_publisher(),
+            walrus_aggregator: default_walrus_aggregator(),
         }
     }
 }

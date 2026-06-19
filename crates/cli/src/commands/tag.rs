@@ -13,13 +13,10 @@ pub fn execute(object_id: &str, alias: &str) -> Result<()> {
     let db_path = SuiScopeConfig::db_path()?;
     let registry = Registry::open(&db_path)?;
 
-    // Make sure object exists
-    if registry.get_by_id(object_id)?.is_none() {
+    // Set the alias (returns false if the object was not found in the registry)
+    if !registry.set_alias(object_id, alias)? {
         return Err(anyhow!("Object ID {} is not tracked in the registry. Publish it first or manually insert.", object_id));
     }
-
-    // Set the alias
-    registry.set_alias(object_id, alias)?;
 
     print_header("Tag Assigned");
     print_success(&format!("Assigned alias '{}' to {}", alias.bold().green(), object_id));

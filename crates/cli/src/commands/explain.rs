@@ -7,16 +7,18 @@ use crate::output::{print_header, print_info, print_warning};
 pub fn execute(error_string: &str) -> Result<()> {
     print_header("Error Explanation");
     
+    let explanation = ErrorDictionary::lookup(error_string);
+
     // Log it quietly in the background if possible
     if let Ok(config) = SuiScopeConfig::load() {
         if let Ok(db_path) = SuiScopeConfig::db_path() {
             if let Ok(registry) = Registry::open(&db_path) {
                 let entry = ErrorEntry {
                     id: None,
-                    error_code: None,
+                    error_code: explanation.as_ref().map(|e| e.title.clone()),
                     error_message: error_string.to_string(),
                     module_id: None,
-                    explanation: None, // We will update this if we find a match
+                    explanation: explanation.as_ref().map(|e| e.plain_english.clone()),
                     tx_digest: None,
                     network: config.network,
                     created_at: None,
@@ -26,7 +28,7 @@ pub fn execute(error_string: &str) -> Result<()> {
         }
     }
 
-    if let Some(explanation) = ErrorDictionary::lookup(error_string) {
+    if let Some(explanation) = explanation {
         println!("{}", explanation.title.bold().red());
         println!("\n{}", explanation.plain_english);
         

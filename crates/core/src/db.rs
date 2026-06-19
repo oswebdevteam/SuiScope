@@ -344,6 +344,71 @@ impl Registry {
     pub fn connection(&self) -> &Connection {
         &self.conn
     }
+
+    /// Merge data from another SQLite registry database file.
+    pub fn merge_from_db_file(&self, other_db_path: &Path) -> Result<()> {
+        let other_path_str = other_db_path.to_str().ok_or_else(|| {
+            crate::errors::SuiScopeError::Config("Invalid UTF-8 in other database path".into())
+        })?;
+        
+        let attach_query = format!("ATTACH DATABASE '{}' AS other;", other_path_str.replace('\'', "''"));
+        self.conn.execute(&attach_query, [])?;
+
+        let merge_res = (|| -> Result<()> {
+            // Merge objects: upsert on object_id
+            self.conn.execute(
+                "INSERT INTO objects (object_id, object_type, alias, owner, package_id, version, digest, tx_digest, network, created_at, updated_at)
+                 SELECT object_id, object_type, alias, owner, package_id, version, digest, tx_digest, network, created_at, updated_at
+                 FROM other.objects
+                 WHERE 1
+                 ON CONFLICT(object_id) DO UPDATE SET
+                    object_type = COALESCE(excluded.object_type, object_type),
+                    alias       = COALESCE(excluded.alias, alias),
+                    owner       = COALESCE(excluded.owner, owner),
+                    package_id  = COALESCE(excluded.package_id, package_id),
+                    version     = COALESCE(excluded.version, version),
+                    digest      = COALESCE(excluded.digest, digest),
+                    tx_digest   = COALESCE(excluded.tx_digest, tx_digest),
+                    updated_at  = datetime('now')",
+                [],
+            )?;
+
+            // Merge transactions: upsert on tx_digest
+            self.conn.execute(
+                "INSERT INTO transactions (tx_digest, command, status, gas_used, gas_owner, package_id, module_name, function, raw_response, network, created_at)
+                 SELECT tx_digest, command, status, gas_used, gas_owner, package_id, module_name, function, raw_response, network, created_at
+                 FROM other.transactions
+                 WHERE 1
+                 ON CONFLICT(tx_digest) DO UPDATE SET
+                    command      = COALESCE(excluded.command, command),
+                    status       = excluded.status,
+                    gas_used     = COALESCE(excluded.gas_used, gas_used),
+                    gas_owner    = COALESCE(excluded.gas_owner, gas_owner),
+                    package_id   = COALESCE(excluded.package_id, package_id),
+                    module_name  = COALESCE(excluded.module_name, module_name),
+                    function     = COALESCE(excluded.function, function),
+                    raw_response = COALESCE(excluded.raw_response, raw_response)",
+                [],
+            )?;
+
+            // Merge errors: insert new errors
+            self.conn.execute(
+                "INSERT INTO errors (error_code, error_message, module_id, explanation, tx_digest, network, created_at)
+                 SELECT error_code, error_message, module_id, explanation, tx_digest, network, created_at
+                 FROM other.errors AS oe
+                 WHERE NOT EXISTS (
+                     SELECT 1 FROM errors WHERE tx_digest = oe.tx_digest AND error_message = oe.error_message
+                 )",
+                [],
+            )?;
+
+            Ok(())
+        })();
+
+        let detach_res = self.conn.execute("DETACH DATABASE other;", []);
+
+        merge_res.and(detach_res.map(|_| ()).map_err(Into::into))
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -477,5 +542,42 @@ mod tests {
         let errors = reg.list_errors("testnet", 10).unwrap();
         assert_eq!(errors.len(), 1);
         assert_eq!(errors[0].error_code.as_deref(), Some("-32602"));
+    }
+
+    #[test]
+    fn test_merge_from_db_file() {
+        let temp_dir = std::env::temp_dir().join("suiscope_merge_test");
+        let _ = std::fs::remove_dir_all(&temp_dir);
+        std::fs::create_dir_all(&temp_dir).unwrap();
+        let db1_path = temp_dir.join("db1.db");
+        let db2_path = temp_dir.join("db2.db");
+
+        let reg1 = Registry::open(&db1_path).unwrap();
+        let reg2 = Registry::open(&db2_path).unwrap();
+
+        // Populate database 1
+        let obj1 = make_test_object("0x0001");
+        reg1.upsert_object(&obj1).unwrap();
+
+        // Populate database 2
+        let mut obj2 = make_test_object("0x0002");
+        obj2.alias = Some("alias2".to_string());
+        reg2.upsert_object(&obj2).unwrap();
+
+        // Merge DB2 into DB1
+        reg1.merge_from_db_file(&db2_path).unwrap();
+
+        // Verify DB1 now contains both objects
+        let objects = reg1.list_objects("testnet").unwrap();
+        assert_eq!(objects.len(), 2);
+
+        let o1 = reg1.get_by_id("0x0001").unwrap().unwrap();
+        let o2 = reg1.get_by_id("0x0002").unwrap().unwrap();
+        assert_eq!(o1.object_id, "0x0001");
+        assert_eq!(o2.object_id, "0x0002");
+        assert_eq!(o2.alias.as_deref(), Some("alias2"));
+
+        // Cleanup
+        let _ = std::fs::remove_dir_all(&temp_dir);
     }
 }
