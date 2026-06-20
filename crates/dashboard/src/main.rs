@@ -9,7 +9,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tower_http::{
     cors::{Any, CorsLayer},
-    services::ServeDir,
+    services::{ServeDir, ServeFile},
 };
 use tracing::info;
 
@@ -40,8 +40,13 @@ async fn main() {
         .route("/api/objects", get(list_objects))
         .route("/api/transactions", get(list_transactions))
         .route("/api/errors", get(list_errors))
-        // Serve static files from the React frontend (Engineer 3 / Enginneer 2 to build this)
-        .fallback_service(ServeDir::new("frontend/dist"))
+        // Serve the statically exported Next.js frontend (`cd frontend && npm run
+        // build` emits to frontend/out). trailingSlash makes each route a
+        // directory with index.html; unmatched paths fall back to 404.html.
+        .fallback_service(
+            ServeDir::new("frontend/out")
+                .not_found_service(ServeFile::new("frontend/out/404.html")),
+        )
         .layer(cors)
         .with_state(state);
 
