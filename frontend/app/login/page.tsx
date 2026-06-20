@@ -1,0 +1,154 @@
+function Logo() {
+  return (
+    <a
+      className="inline-flex flex-col items-start text-base font-extrabold tracking-normal text-[#D9D9D9]"
+      href="/"
+    >
+      <img
+        src="/suiscope-logo.svg"
+        alt="SuiScope"
+        className="mb-[-14px] h-[76px] w-[88px] object-contain object-left"
+      />
+    </a>
+  );
+}
+
+const socialButtons = ["Google", "Facebook", "Twitter", "LinkedIn"];
+
+function SocialIcon({ label }: { label: string }) {
+  if (label === "Google") {
+    return (
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <ellipse cx="15" cy="15" rx="14.9276" ry="14.9276" transform="rotate(0.278753 15 15)" fill="#D9D9D9" />
+        <path d="M23.1319 13.3759H22.4639V13.3415H15.0001V16.6587H19.687C19.0032 18.5898 17.1659 19.976 15.0001 19.976C12.2522 19.976 10.0243 17.748 10.0243 15.0001C10.0243 12.2522 12.2522 10.0243 15.0001 10.0243C16.2685 10.0243 17.4225 10.5028 18.3012 11.2844L20.6469 8.9387C19.1657 7.55832 17.1845 6.70703 15.0001 6.70703C10.4203 6.70703 6.70703 10.4203 6.70703 15.0001C6.70703 19.58 10.4203 23.2932 15.0001 23.2932C19.58 23.2932 23.2932 19.58 23.2932 15.0001C23.2932 14.4441 23.236 13.9013 23.1319 13.3759Z" fill="#FFC107" />
+        <path d="M7.66333 11.1401L10.388 13.1383C11.1253 11.313 12.9108 10.0243 15.0002 10.0243C16.2686 10.0243 17.4226 10.5028 18.3013 11.2844L20.647 8.9387C19.1658 7.55832 17.1846 6.70703 15.0002 6.70703C11.8148 6.70703 9.05242 8.50539 7.66333 11.1401Z" fill="#FF3D00" />
+        <path d="M15.0001 23.2932C17.1422 23.2932 19.0886 22.4735 20.5602 21.1403L17.9935 18.9684C17.133 19.6231 16.0813 19.9772 15.0001 19.976C12.8431 19.976 11.0115 18.6006 10.3216 16.6812L7.61719 18.7648C8.98969 21.4505 11.777 23.2932 15.0001 23.2932Z" fill="#4CAF50" />
+        <path d="M23.1319 13.3757H22.4639V13.3413H15.0001V16.6585H19.687C19.3599 17.5776 18.7707 18.3807 17.9923 18.9686L17.9935 18.9678L20.5602 21.1397C20.3786 21.3047 23.2932 19.1465 23.2932 14.9999C23.2932 14.4439 23.236 13.9011 23.1319 13.3757Z" fill="#1976D2" />
+      </svg>
+    );
+  }
+
+  if (label === "Facebook") {
+    return (
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <circle cx="15" cy="15" r="15" fill="#D9D9D9" />
+        <path d="M16.0418 12.9168V11.3543C16.0418 10.6772 16.1981 10.3127 17.2918 10.3127H18.646V7.7085H16.5627C13.9585 7.7085 12.9168 9.42725 12.9168 11.3543V12.9168H10.8335V15.521H12.9168V23.3335H16.0418V15.521H18.3335L18.646 12.9168H16.0418Z" fill="#2D5699" />
+      </svg>
+    );
+  }
+
+  if (label === "Twitter") {
+    return (
+      <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+        <circle cx="15" cy="15" r="15" fill="#D9D9D9" />
+        <path d="M24.7825 9.51391C24.1103 9.8093 23.3859 10.0034 22.6352 10.0963C23.4033 9.64895 23.9969 8.93999 24.2762 8.08756C23.5517 8.50956 22.7486 8.80496 21.9019 8.97375C21.2124 8.24792 20.2434 7.82593 19.1436 7.82593C17.0923 7.82593 15.4164 9.44639 15.4164 11.4466C15.4164 11.7336 15.4513 12.0121 15.5124 12.2738C12.4049 12.1218 9.63783 10.6786 7.79603 8.49268C7.47306 9.02439 7.28975 9.64895 7.28975 10.3073C7.28975 11.5648 7.94442 12.6789 8.95697 13.3119C8.33722 13.3119 7.76111 13.1431 7.25483 12.8899V12.9152C7.25483 14.6707 8.54671 16.1392 10.2576 16.4684C9.70839 16.6143 9.13158 16.6346 8.5729 16.5275C8.80998 17.2469 9.2743 17.8765 9.90058 18.3276C10.5269 18.7788 11.2836 19.0288 12.0645 19.0426C10.7409 20.0558 9.10013 20.6034 7.41195 20.5955C7.11517 20.5955 6.81839 20.5786 6.52161 20.5449C8.1801 21.5745 10.1528 22.1738 12.2652 22.1738C19.1436 22.1738 22.9232 16.6541 22.9232 11.8686C22.9232 11.7083 22.9232 11.5564 22.9145 11.396C23.6477 10.8896 24.2762 10.2482 24.7825 9.51391Z" fill="#4899EF" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg width="30" height="30" viewBox="0 0 30 30" fill="none" aria-hidden="true">
+      <circle cx="15" cy="15" r="15" fill="#D9D9D9" />
+      <path fillRule="evenodd" clipRule="evenodd" d="M11.1226 8.95943C11.4012 8.67228 11.5544 8.28871 11.5512 7.89014C11.5368 7.50327 11.3752 7.1365 11.0993 6.86485C10.8235 6.5932 10.4543 6.43719 10.0672 6.42871C9.67919 6.43753 9.30894 6.59331 9.03131 6.86458C8.75367 7.13585 8.58935 7.50239 8.57153 7.89014C8.5773 8.28825 8.7357 8.66895 9.01402 8.95366C9.29235 9.23837 9.66937 9.40535 10.0672 9.42014C10.4658 9.41077 10.8448 9.24534 11.1226 8.95943ZM9.79082 11.3894C9.16189 11.3755 8.73332 11.3659 8.73332 12.1351V20.698C8.73332 21.4512 9.1426 21.4362 9.73189 21.4137C9.83903 21.4087 9.95118 21.4059 10.0683 21.4051C10.1862 21.4059 10.2983 21.4087 10.4047 21.4137C10.9919 21.4351 11.3926 21.4512 11.3926 20.698V12.1362C11.3926 11.3669 10.9726 11.3755 10.3469 11.3905C10.2576 11.3926 10.1647 11.3941 10.0683 11.3948C9.97189 11.3948 9.87903 11.3934 9.78975 11.3905M14.1655 11.4066C13.8805 11.4634 13.6972 11.6455 13.6972 12.1362V20.698C13.6972 21.4523 14.0905 21.4373 14.6808 21.4148C14.788 21.4098 14.9015 21.4069 15.0215 21.4062C15.1415 21.4069 15.2555 21.4098 15.3633 21.4148C15.9569 21.4362 16.3576 21.4523 16.3576 20.6991V16.1326C16.3348 15.8992 16.3618 15.6636 16.4369 15.4414C16.5119 15.2192 16.6334 15.0155 16.7932 14.8438C16.9529 14.6721 17.1473 14.5363 17.3635 14.4454C17.5797 14.3545 17.8128 14.3106 18.0472 14.3166C18.2828 14.3025 18.5187 14.3393 18.7388 14.4245C18.9589 14.5097 19.1581 14.6413 19.3228 14.8103C19.4875 14.9794 19.6138 15.1819 19.6932 15.4042C19.7726 15.6265 19.8032 15.8632 19.783 16.0984V20.6648C19.783 21.418 20.1751 21.403 20.7655 21.3805C20.8726 21.3755 20.9862 21.3726 21.1062 21.3719C21.2262 21.3726 21.3401 21.3755 21.448 21.3805C22.0383 21.4019 22.4305 21.418 22.4305 20.6648V14.818C22.4524 14.3381 22.3731 13.8589 22.1977 13.4116C22.0223 12.9643 21.7546 12.559 21.4122 12.2219C21.0699 11.8849 20.6603 11.6237 20.2104 11.4554C19.7604 11.287 19.28 11.2153 18.8005 11.2448C18.312 11.1999 17.8202 11.2814 17.3724 11.4814C16.9245 11.6815 16.5356 11.9933 16.243 12.3869C16.2547 11.9648 16.1176 11.4055 15.7758 11.4055C15.6772 11.4055 15.5262 11.4001 15.3547 11.3948C14.9262 11.3819 14.369 11.3659 14.1655 11.4066Z" fill="#2D5699" />
+    </svg>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <main className="min-h-screen bg-[#061227] px-6 py-[34px] pb-14 min-[1051px]:px-[78px]">
+      <Logo />
+
+      <section
+        className="mx-auto mt-0 grid max-w-[1340px] grid-cols-1 items-center gap-10 min-[1051px]:mt-0.5 min-[1051px]:grid-cols-[minmax(520px,678px)_minmax(633px,1fr)] min-[1051px]:gap-[70px]"
+        aria-labelledby="login-title"
+      >
+        <div className="grid justify-items-center">
+          <h1
+            id="login-title"
+            className="mb-[30px] mt-0 w-full text-center text-[26px] font-extrabold text-[#D9D9D9] min-[761px]:text-[30px]"
+          >
+            Login to SuiScope
+          </h1>
+
+          <form
+            action="/dashboard"
+            className="grid min-h-0 w-full justify-items-center rounded-lg bg-[#3E84CA2B] px-[22px] py-8 pb-[42px] min-[761px]:min-h-[656px] min-[761px]:px-24 min-[761px]:pb-[58px] min-[761px]:pt-[38px]"
+          >
+            <p className="mb-[42px] mt-0 w-full max-w-[330px] text-base leading-[1.4] text-white">
+              To stay connected, please login with your personal info
+            </p>
+
+            <label className="w-full">
+              <span className="sr-only">Username</span>
+              <input
+                type="text"
+                autoComplete="username"
+                placeholder="Username"
+                className="mb-8 h-[72px] w-full rounded-full border-0 bg-[#061227] px-8 text-[#D9D9D9] outline-0 placeholder:text-[#8F98AA] min-[761px]:px-[78px]"
+              />
+            </label>
+
+            <label className="w-full">
+              <span className="sr-only">Password</span>
+              <input
+                type="password"
+                autoComplete="current-password"
+                placeholder="Password"
+                className="mb-8 h-[72px] w-full rounded-full border-0 bg-[#061227] px-8 text-[#D9D9D9] outline-0 placeholder:text-[#8F98AA] min-[761px]:px-[78px]"
+              />
+            </label>
+
+            <div className="mb-10 mt-1 flex w-full flex-col items-start gap-[18px] text-base text-[#8F98AA] min-[761px]:flex-row min-[761px]:items-center min-[761px]:justify-between">
+              <label className="inline-flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  className="grid h-[18px] w-[18px] appearance-none place-items-center rounded-full border-2 border-[#8F98AA] bg-transparent checked:after:h-2 checked:after:w-2 checked:after:rounded-full checked:after:bg-[#4BFFA5] checked:after:content-['']"
+                />
+                <span>Remember me</span>
+              </label>
+              <a href="#">Forgot Password?</a>
+            </div>
+
+            <button
+              type="submit"
+              className="h-[76px] w-full rounded-full border-0 bg-[#4087D2] text-lg font-extrabold text-white"
+            >
+              Login to your account
+            </button>
+
+            <div className="my-[34px] mt-[38px] flex w-full max-w-[332px] items-center gap-3 whitespace-nowrap text-base text-white">
+              <span className="h-px flex-1 bg-[#8F98AA]" />
+              or Sign In with
+              <span className="h-px flex-1 bg-[#8F98AA]" />
+            </div>
+
+            <div className="flex justify-center gap-6">
+              {socialButtons.map((label) => (
+                <button
+                  type="button"
+                  aria-label={`Sign in with ${label}`}
+                  className="grid h-[30px] w-[30px] place-items-center rounded-full border-0 bg-transparent p-0"
+                  key={label}
+                >
+                  <SocialIcon label={label} />
+                </button>
+              ))}
+            </div>
+          </form>
+
+          <p className="mt-[54px] text-lg text-white">
+            Don&apos;t have an account? <a href="#" className="font-extrabold">Register Now</a>
+          </p>
+        </div>
+
+        <img
+          src="/login-illustration.svg"
+          alt=""
+          className="order-first h-auto w-[min(320px,78vw)] justify-self-center min-[1051px]:order-none min-[1051px]:h-[867px] min-[1051px]:w-[633px]"
+          aria-hidden="true"
+        />
+      </section>
+    </main>
+  );
+}

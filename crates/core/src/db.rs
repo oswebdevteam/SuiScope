@@ -146,6 +146,37 @@ impl Registry {
         Ok(objects)
     }
 
+    /// List all tracked objects across every network (most recent first).
+    pub fn list_all_objects(&self) -> Result<Vec<TrackedObject>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, object_id, object_type, alias, owner, package_id, version, digest, tx_digest, network, created_at, updated_at
+             FROM objects
+             ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map([], |row| {
+            Ok(TrackedObject {
+                id: row.get(0)?,
+                object_id: row.get(1)?,
+                object_type: row.get(2)?,
+                alias: row.get(3)?,
+                owner: row.get(4)?,
+                package_id: row.get(5)?,
+                version: row.get(6)?,
+                digest: row.get(7)?,
+                tx_digest: row.get(8)?,
+                network: row.get(9)?,
+                created_at: row.get(10)?,
+                updated_at: row.get(11)?,
+            })
+        })?;
+
+        let mut objects = Vec::new();
+        for row in rows {
+            objects.push(row?);
+        }
+        Ok(objects)
+    }
+
     /// Resolve an alias to a tracked object.
     pub fn get_by_alias(&self, alias: &str) -> Result<Option<TrackedObject>> {
         let result = self
@@ -290,6 +321,38 @@ impl Registry {
         Ok(txs)
     }
 
+    /// List transactions across every network, most recent first.
+    pub fn list_all_transactions(&self, limit: u32) -> Result<Vec<Transaction>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, tx_digest, command, status, gas_used, gas_owner, package_id, module_name, function, raw_response, network, created_at
+             FROM transactions
+             ORDER BY created_at DESC
+             LIMIT ?1",
+        )?;
+        let rows = stmt.query_map(params![limit], |row| {
+            Ok(Transaction {
+                id: row.get(0)?,
+                tx_digest: row.get(1)?,
+                command: row.get(2)?,
+                status: row.get(3)?,
+                gas_used: row.get(4)?,
+                gas_owner: row.get(5)?,
+                package_id: row.get(6)?,
+                module_name: row.get(7)?,
+                function: row.get(8)?,
+                raw_response: row.get(9)?,
+                network: row.get(10)?,
+                created_at: row.get(11)?,
+            })
+        })?;
+
+        let mut txs = Vec::new();
+        for row in rows {
+            txs.push(row?);
+        }
+        Ok(txs)
+    }
+
     // -----------------------------------------------------------------------
     // Errors
     // -----------------------------------------------------------------------
@@ -321,6 +384,34 @@ impl Registry {
              LIMIT ?2",
         )?;
         let rows = stmt.query_map(params![network, limit], |row| {
+            Ok(ErrorEntry {
+                id: row.get(0)?,
+                error_code: row.get(1)?,
+                error_message: row.get(2)?,
+                module_id: row.get(3)?,
+                explanation: row.get(4)?,
+                tx_digest: row.get(5)?,
+                network: row.get(6)?,
+                created_at: row.get(7)?,
+            })
+        })?;
+
+        let mut errors = Vec::new();
+        for row in rows {
+            errors.push(row?);
+        }
+        Ok(errors)
+    }
+
+    /// List errors across every network, most recent first.
+    pub fn list_all_errors(&self, limit: u32) -> Result<Vec<ErrorEntry>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, error_code, error_message, module_id, explanation, tx_digest, network, created_at
+             FROM errors
+             ORDER BY created_at DESC
+             LIMIT ?1",
+        )?;
+        let rows = stmt.query_map(params![limit], |row| {
             Ok(ErrorEntry {
                 id: row.get(0)?,
                 error_code: row.get(1)?,
