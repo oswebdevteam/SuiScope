@@ -9,7 +9,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use tower_http::{
     cors::{Any, CorsLayer},
-    services::ServeDir,
+    services::{ServeDir, ServeFile},
 };
 use tracing::info;
 
@@ -39,8 +39,14 @@ async fn main() {
         .route("/api/health", get(health_check))
         .route("/api/objects", get(list_objects))
         .route("/api/transactions", get(list_transactions))
-        // Serve static files from the React frontend (Engineer 3 / Enginneer 2 to build this)
-        .fallback_service(ServeDir::new("frontend/dist"))
+        .route("/api/errors", get(list_errors))
+        // Serve the statically exported Next.js frontend (`cd frontend && npm run
+        // build` emits to frontend/out). trailingSlash makes each route a
+        // directory with index.html; unmatched paths fall back to 404.html.
+        .fallback_service(
+            ServeDir::new("frontend/out")
+                .not_found_service(ServeFile::new("frontend/out/404.html")),
+        )
         .layer(cors)
         .with_state(state);
 
@@ -57,20 +63,28 @@ async fn health_check() -> Json<Value> {
     Json(json!({ "status": "ok", "service": "suiscope-dashboard" }))
 }
 
-// TODO (Engineer 3): Implement proper error handling and pagination
+// Returns all tracked objects across every network; the frontend filters by
+// network and search text client-side.
 async fn list_objects(
     State(state): State<Arc<AppState>>,
 ) -> Json<Value> {
     let registry = state.registry.lock().unwrap();
-    let objects = registry.list_objects("testnet").unwrap_or_default();
+    let objects = registry.list_all_objects().unwrap_or_default();
     Json(json!(objects))
 }
 
-// TODO (Engineer 3): Implement proper error handling and pagination
 async fn list_transactions(
     State(state): State<Arc<AppState>>,
 ) -> Json<Value> {
     let registry = state.registry.lock().unwrap();
-    let txs = registry.list_transactions("testnet", 50).unwrap_or_default();
+    let txs = registry.list_all_transactions(200).unwrap_or_default();
     Json(json!(txs))
+}
+
+async fn list_errors(
+    State(state): State<Arc<AppState>>,
+) -> Json<Value> {
+    let registry = state.registry.lock().unwrap();
+    let errors = registry.list_all_errors(200).unwrap_or_default();
+    Json(json!(errors))
 }

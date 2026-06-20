@@ -5,6 +5,7 @@ Cargo.lock
 
 # SuiScope local project data
 .suiscope/
+.next/
 
 # IDE
 .idea/
