@@ -3,10 +3,6 @@ use crate::types::InspectResult;
 use serde_json::{json, Value};
 
 /// Async client for Sui JSON-RPC.
-///
-/// **Note:** Sui JSON-RPC is deprecated (EOL July 2026). This client is designed
-/// to be swappable — all public methods return domain types, not raw JSON.
-/// A future GraphQL/gRPC implementation can implement the same signatures.
 pub struct SuiRpcClient {
     client: reqwest::Client,
     rpc_url: String,

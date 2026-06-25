@@ -5,7 +5,15 @@ import {
   fetchObjects,
   fetchTransactions,
   fetchErrors,
+  fetchInspect,
+  fetchGraph,
+  uploadToWalrus,
+  importFromWalrus,
   type TrackedObject,
+  type Transaction,
+  type ErrorEntry,
+  type InspectResult,
+  type ObjectGraph,
 } from "@/lib/api";
 
 const navItems = [
@@ -17,7 +25,6 @@ const navItems = [
   ["cloud", "Walrus Sync"],
 ];
 
-// --- helpers ---------------------------------------------------------------
 
 function shorten(id: string): string {
   return id.length > 13 ? `${id.slice(0, 6)}...${id.slice(-4)}` : id;
@@ -156,12 +163,16 @@ function Icon({ name }: { name: string }) {
 
 function Logo() {
   return (
-    <div className="ml-0 mb-7 inline-flex flex-col items-start text-base font-extrabold tracking-normal text-[#D9D9D9] min-[761px]:ml-2.5 min-[761px]:mb-0">
+    <div className="flex items-center justify-between text-sm font-extrabold text-[#D9D9D9]">
       <img
         src="/suiscope-logo.svg"
         alt="SuiScope"
-        className="mb-[-16px] h-20 w-[92px] object-contain object-left"
+        className="h-16 w-auto object-contain"
       />
+      <div className="flex gap-4 text-xs leading-tight max-[760px]:hidden">
+        <span>DEBUG</span>
+        <span>REGISTRY</span>
+      </div>
     </div>
   );
 }
@@ -224,14 +235,35 @@ function StatItem({
 
 export default function Dashboard() {
   const [objects, setObjects] = useState<TrackedObject[]>([]);
-  const [txCount, setTxCount] = useState(0);
-  const [errorCount, setErrorCount] = useState(0);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [errors, setErrors] = useState<ErrorEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState("Object Registry");
 
   const [query, setQuery] = useState("");
   const [network, setNetwork] = useState("all");
   const [copied, setCopied] = useState<string | null>(null);
+
+  // Inspect tab state
+  const [inspectQuery, setInspectQuery] = useState("");
+  const [inspectResult, setInspectResult] = useState<InspectResult | null>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectError, setInspectError] = useState<string | null>(null);
+
+  // Graph tab state
+  const [graph, setGraph] = useState<ObjectGraph | null>(null);
+  const [graphLoading, setGraphLoading] = useState(false);
+  const [graphError, setGraphError] = useState<string | null>(null);
+
+  // Walrus tab state
+  const [walrusAction, setWalrusAction] = useState<"upload" | "import">("upload");
+  const [walrusLoading, setWalrusLoading] = useState(false);
+  const [walrusError, setWalrusError] = useState<string | null>(null);
+  const [walrusSuccess, setWalrusSuccess] = useState<string | null>(null);
+  const [walrusBlobId, setWalrusBlobId] = useState("");
+  const [lastUploadedBlobId, setLastUploadedBlobId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -244,8 +276,8 @@ export default function Dashboard() {
         ]);
         if (cancelled) return;
         setObjects(objs);
-        setTxCount(txs.length);
-        setErrorCount(errs.length);
+        setTransactions(txs);
+        setErrors(errs);
         setLoadError(null);
       } catch (e) {
         if (!cancelled) {
@@ -295,36 +327,104 @@ export default function Dashboard() {
     }
   }
 
+  async function runInspect(id: string) {
+    const trimmed = id.trim();
+    if (!trimmed) return;
+    setInspectLoading(true);
+    setInspectError(null);
+    setInspectResult(null);
+    try {
+      const result = await fetchInspect(trimmed);
+      if (result.error) {
+        setInspectError(result.error);
+      } else {
+        setInspectResult(result);
+      }
+    } catch (e) {
+      setInspectError(e instanceof Error ? e.message : "Request failed");
+    } finally {
+      setInspectLoading(false);
+    }
+  }
+
+  async function loadGraph() {
+    setGraphLoading(true);
+    setGraphError(null);
+    try {
+      const data = await fetchGraph();
+      setGraph(data);
+    } catch (e) {
+      setGraphError(e instanceof Error ? e.message : "Failed to load graph");
+    } finally {
+      setGraphLoading(false);
+    }
+  }
+
+  async function handleWalrusUpload() {
+    setWalrusLoading(true);
+    setWalrusError(null);
+    setWalrusSuccess(null);
+    try {
+      const result = await uploadToWalrus();
+      setLastUploadedBlobId(result.blob_id);
+      setWalrusSuccess(`Upload successful! Blob ID: ${result.blob_id}`);
+    } catch (e) {
+      setWalrusError(e instanceof Error ? e.message : "Upload failed");
+    } finally {
+      setWalrusLoading(false);
+    }
+  }
+
+  async function handleWalrusImport() {
+    const trimmed = walrusBlobId.trim();
+    if (!trimmed) {
+      setWalrusError("Please enter a Blob ID");
+      return;
+    }
+    setWalrusLoading(true);
+    setWalrusError(null);
+    setWalrusSuccess(null);
+    try {
+      await importFromWalrus(trimmed);
+      setWalrusSuccess("Registry imported and merged successfully!");
+      setWalrusBlobId("");
+      // Reload objects after import
+      const objs = await fetchObjects();
+      setObjects(objs);
+    } catch (e) {
+      setWalrusError(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setWalrusLoading(false);
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#030912]">
-      <aside className="top-0 flex min-h-0 flex-col border-r border-[#D9D9D933] bg-[#061227] p-6 min-[761px]:fixed min-[761px]:left-0 min-[761px]:top-0 min-[761px]:h-screen min-[761px]:w-[400px] min-[761px]:px-[22px] min-[761px]:pb-14 min-[761px]:pt-10 max-[1050px]:min-[761px]:w-[280px]">
-        <div className="-mx-6 border-b border-[#D9D9D933] px-6 min-[761px]:-mx-[22px] min-[761px]:px-[22px]">
+      <aside className="top-0 flex flex-col border-r border-[#D9D9D933] bg-[#061227] p-4 min-[761px]:fixed min-[761px]:left-0 min-[761px]:top-0 min-[761px]:h-screen min-[761px]:w-[320px] min-[761px]:px-4 min-[761px]:py-4 max-[1050px]:min-[761px]:w-[260px]">
+        <div className="-mx-4 border-b border-[#D9D9D933] px-4 pb-3">
           <Logo />
-          <div className="-mt-[42px] mb-[94px] ml-[124px] flex gap-[26px] text-xl font-extrabold text-[#D9D9D9] max-[1050px]:ml-[94px] max-[1050px]:gap-4 max-[1050px]:text-[17px] max-[760px]:hidden">
-            <span>DEBUG</span>
-            <span>REGISTRY</span>
-          </div>
         </div>
 
-        <section className="-mx-6 mb-6 border-b border-[#D9D9D933] px-6 py-6 min-[761px]:-mx-[22px] min-[761px]:mb-0 min-[761px]:px-[22px]">
-          <h2 className="mb-8 mt-0 text-[22px] font-medium text-[#D9D9D9]">PROJECT</h2>
-          <p className="m-0 flex items-center gap-2 text-xl font-extrabold text-[#D9D9D9]">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#4BFFA5]" />
+        <section className="-mx-4 border-b border-[#D9D9D933] px-4 py-3">
+          <h2 className="mb-2 mt-0 text-base font-medium text-[#D9D9D9]">PROJECT</h2>
+          <p className="m-0 flex items-center gap-2 text-sm font-bold text-[#D9D9D9]">
+            <span className="h-2 w-2 rounded-full bg-[#4BFFA5]" />
             Local Registry
           </p>
         </section>
 
-        <section className="mb-6 flex-1 py-6 min-[761px]:mb-0">
-          <h2 className="mb-8 mt-0 text-[22px] font-medium text-[#D9D9D9]">NAVIGATION</h2>
+        <section className="flex-1 py-3 min-h-0 overflow-y-auto">
+          <h2 className="mb-3 mt-0 text-base font-medium text-[#D9D9D9]">NAVIGATION</h2>
           <nav
             aria-label="Primary navigation"
-            className="grid gap-[18px] min-[761px]:gap-7 max-[760px]:grid-cols-2"
+            className="grid gap-2 max-[760px]:grid-cols-2"
           >
             {navItems.map(([icon, label]) => (
               <a
                 href="#"
-                className={`flex min-h-7 items-center gap-[18px] text-[15px] text-[#D9D9D9] transition-colors hover:text-white min-[761px]:text-xl ${
-                  label === "Object Registry" ? "text-white" : ""
+                onClick={(e) => { e.preventDefault(); setActiveTab(label); }}
+                className={`flex items-center gap-2 text-sm text-[#D9D9D9] transition-colors hover:text-white py-1 ${
+                  label === activeTab ? "text-white font-bold" : ""
                 }`}
                 key={label}
               >
@@ -335,30 +435,38 @@ export default function Dashboard() {
           </nav>
         </section>
 
-        <div className="-mx-[22px] grid justify-items-center gap-[18px] border-t border-[#D9D9D933] px-[22px] pt-4 text-sm text-[#8F98AA] max-[760px]:hidden">
-          <code className="text-sm text-[#4BFFA5]">suiscope publish</code>
-          <span>Auto-registers all spawned</span>
+        <div className="-mx-4 border-t border-[#D9D9D933] px-4 pt-2 text-center text-xs text-[#8F98AA] max-[760px]:hidden">
+          <code className="text-xs text-[#4BFFA5] block mb-1">suiscope publish</code>
+          <span className="block text-[10px]">Auto-registers all spawned</span>
         </div>
       </aside>
 
-      <section className="min-w-0 bg-[#030912] min-[761px]:ml-[400px] max-[1050px]:min-[761px]:ml-[280px]">
+      <section className="min-w-0 bg-[#030912] min-[761px]:ml-[320px] max-[1050px]:min-[761px]:ml-[260px]">
         <header className="border-b border-[#D9D9D933] bg-[#061227] px-[18px] py-5 min-[761px]:min-h-[123px] min-[761px]:px-[42px] min-[761px]:pb-3.5">
           <div className="mb-[26px] flex flex-wrap gap-[15px] text-sm text-[#D9D9D9] [&_svg]:h-4 [&_svg]:w-4">
             <StatItem icon="cube" label="Packages" value={packageCount} />
             <StatItem icon="cube" label="Objects" value={objects.length} />
-            <StatItem icon="pulse" label="Transactions" value={txCount} />
-            <StatItem icon="alert" label="Errors" value={errorCount} />
+            <StatItem icon="pulse" label="Transactions" value={transactions.length} />
+            <StatItem icon="alert" label="Errors" value={errors.length} />
           </div>
           <h1 className="mb-1.5 mt-0 text-xl font-extrabold text-[#D9D9D9]">
-            Object Registry
+            {activeTab}
           </h1>
           <p className="m-0 text-base text-[#8F98AA]">
-            All tracked Package IDs and Object IDs for this project
+            {activeTab === "Object Registry" && "All tracked Package IDs and Object IDs for this project"}
+            {activeTab === "Error Log" && "Recent errors and Move aborts"}
+            {activeTab === "Tx Timeline" && "Recent transactions"}
+            {activeTab === "Inspect Object" && "Fetch live on-chain state for any object or package ID"}
+            {activeTab === "Object Graph" && "Visualize relationships between objects and packages"}
+            {activeTab === "Walrus Sync" && "Sync registry data to Walrus storage"}
+            {activeTab !== "Object Registry" && activeTab !== "Error Log" && activeTab !== "Tx Timeline" && activeTab !== "Inspect Object" && activeTab !== "Object Graph" && activeTab !== "Walrus Sync" && "Details and settings"}
           </p>
         </header>
 
         <div className="px-[18px] pt-[22px] min-[761px]:pl-6 min-[761px]:pr-[26px] min-[1051px]:pl-[53px]">
-          <div className="mb-6 flex flex-col gap-4 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
+          {activeTab === "Object Registry" && (
+            <>
+              <div className="mb-6 flex flex-col gap-4 min-[900px]:flex-row min-[900px]:items-center min-[900px]:justify-between">
             <label className="flex h-[52px] w-full max-w-[536px] items-center gap-3.5 rounded-md border border-[#29466D] bg-[#061227] px-[30px] text-[#8F98AA]">
               <Icon name="search" />
               <input
@@ -506,7 +614,425 @@ export default function Dashboard() {
                   </span>
                 </div>
               ))}
-          </div>
+            </div>
+            </>
+          )}
+
+          {activeTab === "Error Log" && (
+            <div className="min-h-[calc(100vh-220px)] overflow-x-auto rounded-[5px] border border-[#122848] bg-[#061227]" role="table" aria-label="Error Log">
+              <div className="grid min-h-[70px] min-w-[900px] grid-cols-[minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(300px,2fr)] items-center px-7 text-base font-bold text-[#8F98AA]" role="row">
+                <span role="columnheader">ERROR CODE</span>
+                <span role="columnheader">NETWORK</span>
+                <span role="columnheader">TX DIGEST</span>
+                <span role="columnheader">MESSAGE</span>
+              </div>
+              {loading && <div className="px-7 py-10 text-base text-[#8F98AA]">Loading errors…</div>}
+              {!loading && errors.length === 0 && <div className="px-7 py-10 text-base text-[#8F98AA]">No errors tracked yet. Run suiscope explain to log an error.</div>}
+              {!loading && errors.map((err, i) => (
+                <div key={i} className="grid min-h-[84px] min-w-[900px] grid-cols-[minmax(150px,1fr)_minmax(150px,1fr)_minmax(150px,1fr)_minmax(300px,2fr)] items-center px-7 text-sm text-[#8F98AA]" role="row">
+                  <span className="text-[#C4B93A] font-medium" role="cell">{err.error_code || "Unknown"}</span>
+                  <span role="cell"><NetworkLabel network={err.network} /></span>
+                  <span role="cell" className="text-[#D9D9D9]">{err.tx_digest ? shorten(err.tx_digest) : "-"}</span>
+                  <span role="cell" className="text-[#D9D9D9]">{err.error_message}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "Inspect Object" && (
+            <div className="max-w-[860px]">
+              {/* Search bar */}
+              <form
+                className="mb-8 flex gap-3"
+                onSubmit={(e) => { e.preventDefault(); runInspect(inspectQuery); }}
+              >
+                <label className="flex h-[52px] flex-1 items-center gap-3.5 rounded-md border border-[#29466D] bg-[#061227] px-[30px] text-[#8F98AA]">
+                  <Icon name="search" />
+                  <input
+                    aria-label="Object or package ID"
+                    placeholder="Enter object ID or alias (e.g. 0x2)"
+                    value={inspectQuery}
+                    onChange={(e) => setInspectQuery(e.target.value)}
+                    className="w-full min-w-0 border-0 bg-transparent text-[#D9D9D9] outline-0 placeholder:text-[#8F98AA]"
+                  />
+                </label>
+                <button
+                  type="submit"
+                  disabled={inspectLoading || !inspectQuery.trim()}
+                  className="h-[52px] rounded-md border border-[#2D9499] bg-[#1B5B682E] px-6 text-base text-[#2D9499] transition-colors hover:bg-[#2D949926] disabled:opacity-40"
+                >
+                  {inspectLoading ? "Fetching…" : "Inspect"}
+                </button>
+              </form>
+
+              {/* Error state */}
+              {inspectError && (
+                <div className="mb-6 rounded-md border border-[#e96b6b44] bg-[#e96b6b14] px-6 py-4 text-sm text-[#e96b6b]">
+                  {inspectError}
+                </div>
+              )}
+
+              {/* Loading skeleton */}
+              {inspectLoading && (
+                <div className="rounded-[5px] border border-[#122848] bg-[#061227] px-8 py-10 text-base text-[#8F98AA]">
+                  Fetching on-chain state…
+                </div>
+              )}
+
+              {/* Result */}
+              {!inspectLoading && inspectResult && (
+                <div className="rounded-[5px] border border-[#122848] bg-[#061227]">
+                  {/* Metadata section */}
+                  <div className="border-b border-[#122848] px-8 py-6">
+                    <h2 className="mb-5 mt-0 text-base font-bold uppercase tracking-wide text-[#8F98AA]">Metadata</h2>
+                    <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-8 gap-y-4 text-sm">
+                      <dt className="text-[#8F98AA]">Object ID</dt>
+                      <dd className="m-0 flex items-center gap-2 font-mono text-[#D9D9D9] break-all">
+                        {inspectResult.object_id}
+                        <a
+                          href={inspectResult.explorer_object_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="View on explorer"
+                          className="shrink-0 text-[#2D9499] hover:text-[#4BFFA5]"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                            <polyline points="15 3 21 3 21 9" />
+                            <line x1="10" y1="14" x2="21" y2="3" />
+                          </svg>
+                        </a>
+                      </dd>
+
+                      <dt className="text-[#8F98AA]">Type</dt>
+                      <dd className="m-0 text-[#D9D9D9] break-all">
+                        {inspectResult.object_type ? (
+                          <TypeBadge label={deriveBadge(inspectResult.object_type)} />
+                        ) : (
+                          <TypeBadge label="Package" />
+                        )}
+                        {inspectResult.object_type && (
+                          <span className="ml-2 font-mono text-xs text-[#8F98AA]">{inspectResult.object_type}</span>
+                        )}
+                      </dd>
+
+                      <dt className="text-[#8F98AA]">Owner</dt>
+                      <dd className="m-0 font-mono text-[#D9D9D9] break-all">{inspectResult.owner ?? "—"}</dd>
+
+                      <dt className="text-[#8F98AA]">Version</dt>
+                      <dd className="m-0 text-[#D9D9D9]">{inspectResult.version ?? "—"}</dd>
+
+                      <dt className="text-[#8F98AA]">Digest</dt>
+                      <dd className="m-0 font-mono text-[#D9D9D9] break-all">{inspectResult.digest ?? "—"}</dd>
+
+                      <dt className="text-[#8F98AA]">Network</dt>
+                      <dd className="m-0"><NetworkLabel network={inspectResult.network} /></dd>
+
+                      <dt className="text-[#8F98AA]">Storage Rebate</dt>
+                      <dd className="m-0 text-[#D9D9D9]">{inspectResult.storage_rebate ?? "—"}</dd>
+
+                      {inspectResult.previous_transaction && (
+                        <>
+                          <dt className="text-[#8F98AA]">Last Tx</dt>
+                          <dd className="m-0 flex items-center gap-2 font-mono text-[#D9D9D9] break-all">
+                            {shorten(inspectResult.previous_transaction)}
+                            {inspectResult.explorer_tx_url && (
+                              <a
+                                href={inspectResult.explorer_tx_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="View transaction on explorer"
+                                className="shrink-0 text-[#2D9499] hover:text-[#4BFFA5]"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                                  <polyline points="15 3 21 3 21 9" />
+                                  <line x1="10" y1="14" x2="21" y2="3" />
+                                </svg>
+                              </a>
+                            )}
+                          </dd>
+                        </>
+                      )}
+                    </dl>
+                  </div>
+
+                  {/* Fields / content section */}
+                  <div className="px-8 py-6">
+                    <h2 className="mb-5 mt-0 text-base font-bold uppercase tracking-wide text-[#8F98AA]">Fields</h2>
+                    {inspectResult.content && Object.keys(inspectResult.content).length > 0 ? (
+                      <div className="overflow-x-auto rounded border border-[#122848]">
+                        <div className="grid min-w-[500px] grid-cols-[minmax(160px,0.6fr)_1fr] border-b border-[#122848] px-5 py-3 text-xs font-bold uppercase tracking-wide text-[#8F98AA]">
+                          <span>Field</span>
+                          <span>Value</span>
+                        </div>
+                        {Object.entries(inspectResult.content).map(([key, val]) => {
+                          const display =
+                            typeof val === "string"
+                              ? val
+                              : typeof val === "object" && val !== null
+                              ? JSON.stringify(val)
+                              : String(val);
+                          return (
+                            <div
+                              key={key}
+                              className="grid min-w-[500px] grid-cols-[minmax(160px,0.6fr)_1fr] items-start border-b border-[#122848] px-5 py-3 last:border-0 text-sm"
+                            >
+                              <span className="text-[#4BFFA5] font-mono">{key}</span>
+                              <span className="text-[#D9D9D9] font-mono break-all">{display}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="m-0 text-sm text-[#8F98AA]">
+                        No content fields available — this is likely a package or unstructured object.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!inspectLoading && !inspectResult && !inspectError && (
+                <div className="rounded-[5px] border border-[#122848] bg-[#061227] px-8 py-14 text-center text-sm text-[#8F98AA]">
+                  Enter an object ID above and click Inspect to fetch its live on-chain state.
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "Tx Timeline" && (
+            <div className="min-h-[calc(100vh-220px)] overflow-x-auto rounded-[5px] border border-[#122848] bg-[#061227]" role="table" aria-label="Tx Timeline">
+              <div className="grid min-h-[70px] min-w-[900px] grid-cols-[minmax(150px,1fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(200px,1.5fr)_minmax(150px,1fr)] items-center px-7 text-base font-bold text-[#8F98AA]" role="row">
+                <span role="columnheader">TX DIGEST</span>
+                <span role="columnheader">NETWORK</span>
+                <span role="columnheader">STATUS</span>
+                <span role="columnheader">ACTION</span>
+                <span role="columnheader">GAS USED</span>
+              </div>
+              {loading && <div className="px-7 py-10 text-base text-[#8F98AA]">Loading transactions…</div>}
+              {!loading && transactions.length === 0 && <div className="px-7 py-10 text-base text-[#8F98AA]">No transactions tracked yet.</div>}
+              {!loading && transactions.map((tx, i) => (
+                <div key={i} className="grid min-h-[84px] min-w-[900px] grid-cols-[minmax(150px,1fr)_minmax(120px,0.8fr)_minmax(120px,0.8fr)_minmax(200px,1.5fr)_minmax(150px,1fr)] items-center px-7 text-sm text-[#8F98AA]" role="row">
+                  <span className="text-[#D9D9D9] font-mono" role="cell">
+                    {tx.tx_digest ? shorten(tx.tx_digest) : "-"}
+                  </span>
+                  <span role="cell"><NetworkLabel network={tx.network} /></span>
+                  <span role="cell" className={tx.status && tx.status.toLowerCase() === "success" ? "text-[#4BFFA5]" : "text-[#e96b6b]"}>
+                    {tx.status || "Unknown"}
+                  </span>
+                  <span role="cell" className="text-[#D9D9D9]">
+                    {tx.function ? `${tx.module_name}::${tx.function}` : (tx.command || "Unknown")}
+                  </span>
+                  <span role="cell" className="text-[#D9D9D9]">
+                    {tx.gas_used ? tx.gas_used.toLocaleString() : "-"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "Object Graph" && (
+            <div className="max-w-[1200px]">
+              <div className="mb-6 flex items-center justify-between">
+                <p className="text-sm text-[#8F98AA]">
+                  {graph ? `${graph.nodes.length} nodes, ${graph.edges.length} edges` : "Load graph data to visualize"}
+                </p>
+                <button
+                  onClick={loadGraph}
+                  disabled={graphLoading}
+                  className="rounded-md border border-[#2D9499] bg-[#1B5B682E] px-4 py-2 text-sm text-[#2D9499] transition-colors hover:bg-[#2D949926] disabled:opacity-40"
+                >
+                  {graphLoading ? "Loading..." : graph ? "Refresh Graph" : "Load Graph"}
+                </button>
+              </div>
+
+              {graphError && (
+                <div className="mb-6 rounded-md border border-[#e96b6b44] bg-[#e96b6b14] px-6 py-4 text-sm text-[#e96b6b]">
+                  {graphError}
+                </div>
+              )}
+
+              {graphLoading && (
+                <div className="min-h-[calc(100vh-280px)] rounded-[5px] border border-[#122848] bg-[#061227] px-8 py-10 text-center text-base text-[#8F98AA]">
+                  Loading graph data...
+                </div>
+              )}
+
+              {!graphLoading && !graph && !graphError && (
+                <div className="min-h-[calc(100vh-280px)] rounded-[5px] border border-[#122848] bg-[#061227] px-8 py-14 text-center">
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-4 text-[#2D9499]">
+                    <circle cx="6" cy="6" r="2" />
+                    <circle cx="18" cy="5" r="2" />
+                    <circle cx="8" cy="18" r="2" />
+                    <path d="M8 7.2 16 5.8" />
+                    <path d="M7 8v8" />
+                    <path d="M9.6 17 18 7" />
+                  </svg>
+                  <h3 className="mb-2 text-lg font-bold text-[#D9D9D9]">Object Graph</h3>
+                  <p className="text-sm text-[#8F98AA]">Click "Load Graph" to visualize relationships between objects.</p>
+                </div>
+              )}
+
+              {!graphLoading && graph && (
+                <div className="min-h-[calc(100vh-280px)] rounded-[5px] border border-[#122848] bg-[#061227] p-6">
+                  {graph.nodes.length === 0 ? (
+                    <div className="py-20 text-center text-sm text-[#8F98AA]">
+                      No objects in registry. Run <code className="text-[#4BFFA5]">suiscope publish</code> to add some.
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      <div>
+                        <h3 className="mb-3 text-base font-bold text-[#D9D9D9]">Nodes</h3>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {graph.nodes.map((node) => (
+                            <div key={node.id} className="rounded border border-[#122848] bg-[#030912] p-3">
+                              <div className="mb-1 flex items-center justify-between">
+                                <span className="font-mono text-sm font-bold text-[#4BFFA5]">{node.label}</span>
+                                <TypeBadge label={node.type === "package" ? "Package" : "Object"} />
+                              </div>
+                              <p className="mb-1 font-mono text-xs text-[#8F98AA] break-all">{node.id}</p>
+                              <p className="text-xs text-[#8F98AA]">
+                                Network: <NetworkLabel network={node.network} />
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {graph.edges.length > 0 && (
+                        <div>
+                          <h3 className="mb-3 text-base font-bold text-[#D9D9D9]">Relationships</h3>
+                          <div className="space-y-2">
+                            {graph.edges.map((edge, i) => (
+                              <div key={i} className="flex items-center gap-3 rounded border border-[#122848] bg-[#030912] p-3 text-sm">
+                                <span className="font-mono text-[#D9D9D9]">{shorten(edge.from)}</span>
+                                <span className="text-[#8F98AA]">→</span>
+                                <span className="rounded bg-[#2D949926] px-2 py-1 text-xs text-[#2D9499]">{edge.label}</span>
+                                <span className="text-[#8F98AA]">→</span>
+                                <span className="font-mono text-[#D9D9D9]">{shorten(edge.to)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === "Walrus Sync" && (
+            <div className="max-w-[860px]">
+              <div className="mb-6 flex gap-3">
+                <button
+                  onClick={() => { setWalrusAction("upload"); setWalrusError(null); setWalrusSuccess(null); }}
+                  className={`flex-1 rounded-md border px-4 py-2 text-sm transition-colors ${
+                    walrusAction === "upload"
+                      ? "border-[#2D9499] bg-[#1B5B682E] text-[#2D9499] font-bold"
+                      : "border-[#29466D] bg-[#061227] text-[#8F98AA] hover:text-[#D9D9D9]"
+                  }`}
+                >
+                  Upload to Walrus
+                </button>
+                <button
+                  onClick={() => { setWalrusAction("import"); setWalrusError(null); setWalrusSuccess(null); }}
+                  className={`flex-1 rounded-md border px-4 py-2 text-sm transition-colors ${
+                    walrusAction === "import"
+                      ? "border-[#2D9499] bg-[#1B5B682E] text-[#2D9499] font-bold"
+                      : "border-[#29466D] bg-[#061227] text-[#8F98AA] hover:text-[#D9D9D9]"
+                  }`}
+                >
+                  Import from Walrus
+                </button>
+              </div>
+
+              {walrusError && (
+                <div className="mb-6 rounded-md border border-[#e96b6b44] bg-[#e96b6b14] px-6 py-4 text-sm text-[#e96b6b]">
+                  {walrusError}
+                </div>
+              )}
+
+              {walrusSuccess && (
+                <div className="mb-6 rounded-md border border-[#4BFFA544] bg-[#4BFFA514] px-6 py-4 text-sm text-[#4BFFA5]">
+                  {walrusSuccess}
+                </div>
+              )}
+
+              {walrusAction === "upload" && (
+                <div className="rounded-[5px] border border-[#122848] bg-[#061227] p-8">
+                  <h3 className="mb-4 text-lg font-bold text-[#D9D9D9]">Upload Registry to Walrus</h3>
+                  <p className="mb-6 text-sm text-[#8F98AA]">
+                    Upload your local registry database to Walrus decentralized storage. You'll receive a Blob ID that can be shared with teammates to sync registries across machines.
+                  </p>
+                  <button
+                    onClick={handleWalrusUpload}
+                    disabled={walrusLoading}
+                    className="w-full rounded-md border border-[#2D9499] bg-[#1B5B682E] px-6 py-3 text-base text-[#2D9499] transition-colors hover:bg-[#2D949926] disabled:opacity-40"
+                  >
+                    {walrusLoading ? "Uploading..." : "Upload Registry"}
+                  </button>
+                  {lastUploadedBlobId && (
+                    <div className="mt-6 rounded border border-[#122848] bg-[#030912] p-4">
+                      <p className="mb-2 text-sm font-bold text-[#D9D9D9]">Last Uploaded Blob ID:</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 font-mono text-sm text-[#4BFFA5] break-all">{lastUploadedBlobId}</code>
+                        <button
+                          onClick={() => copyId(lastUploadedBlobId)}
+                          className="grid h-8 w-8 place-items-center rounded border-0 bg-transparent p-0 text-[#8F98AA] hover:text-[#4BFFA5]"
+                          aria-label="Copy blob ID"
+                        >
+                          {copied === lastUploadedBlobId ? (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4BFFA5" strokeWidth="2">
+                              <path d="M20 6 9 17l-5-5" />
+                            </svg>
+                          ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect width="13" height="13" x="9" y="9" rx="2" />
+                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                            </svg>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {walrusAction === "import" && (
+                <div className="rounded-[5px] border border-[#122848] bg-[#061227] p-8">
+                  <h3 className="mb-4 text-lg font-bold text-[#D9D9D9]">Import Registry from Walrus</h3>
+                  <p className="mb-6 text-sm text-[#8F98AA]">
+                    Import and merge a registry database from Walrus using its Blob ID. This will merge the remote data with your local registry without overwriting existing entries.
+                  </p>
+                  <form
+                    onSubmit={(e) => { e.preventDefault(); handleWalrusImport(); }}
+                    className="space-y-4"
+                  >
+                    <label className="block">
+                      <span className="mb-2 block text-sm font-medium text-[#D9D9D9]">Blob ID</span>
+                      <input
+                        type="text"
+                        value={walrusBlobId}
+                        onChange={(e) => setWalrusBlobId(e.target.value)}
+                        placeholder="Enter Walrus Blob ID"
+                        className="w-full rounded-md border border-[#29466D] bg-[#061227] px-4 py-3 font-mono text-sm text-[#D9D9D9] outline-0 placeholder:text-[#8F98AA] focus:border-[#2D9499]"
+                      />
+                    </label>
+                    <button
+                      type="submit"
+                      disabled={walrusLoading || !walrusBlobId.trim()}
+                      className="w-full rounded-md border border-[#2D9499] bg-[#1B5B682E] px-6 py-3 text-base text-[#2D9499] transition-colors hover:bg-[#2D949926] disabled:opacity-40"
+                    >
+                      {walrusLoading ? "Importing..." : "Import & Merge"}
+                    </button>
+                  </form>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
     </main>

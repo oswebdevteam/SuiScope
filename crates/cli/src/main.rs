@@ -83,7 +83,7 @@ async fn main() -> anyhow::Result<()> {
         Commands::Inspect { id_or_alias } => inspect::execute(&id_or_alias).await?,
         Commands::Explain { error } => explain::execute(&error)?,
         Commands::Sync { import } => sync::execute(import).await?,
-        Commands::Dashboard => dashboard::execute()?,
+        Commands::Dashboard => dashboard::execute().await?,
     }
 
     Ok(())

@@ -62,7 +62,7 @@ impl WalrusClient {
 
     /// Download a raw data blob from the Walrus aggregator.
     pub async fn download_blob(&self, blob_id: &str) -> Result<Vec<u8>> {
-        let url = format!("{}/v1/blobs/{}", self.aggregator_url, blob_id);
+        let url = format!("{}/v1/{}", self.aggregator_url, blob_id);
         
         let resp = self
             .client

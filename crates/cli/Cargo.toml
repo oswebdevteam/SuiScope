@@ -12,6 +12,7 @@ path = "src/main.rs"
 
 [dependencies]
 suiscope-core = { path = "../core" }
+suiscope-dashboard = { path = "../dashboard" }
 clap = { version = "4", features = ["derive"] }
 colored = "2"
 tabled = "0.16"

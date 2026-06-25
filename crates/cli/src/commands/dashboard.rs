@@ -2,10 +2,11 @@ use anyhow::Result;
 
 use crate::output::print_info;
 
-pub fn execute() -> Result<()> {
-    print_info("Dashboard server not yet implemented.");
-    // TODO (Engineer 3):
-    // 1. Either spawn the axum binary here as a child process.
-    // 2. Or compile the axum server directly into this command if preferred.
-    Ok(())
+const DEFAULT_PORT: u16 = 7731;
+
+pub async fn execute() -> Result<()> {
+    print_info(&format!(
+        "Starting dashboard on http://127.0.0.1:{DEFAULT_PORT} — press Ctrl-C to stop."
+    ));
+    suiscope_dashboard::start(DEFAULT_PORT).await
 }
