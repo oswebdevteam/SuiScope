@@ -31,20 +31,32 @@ async fn serve_frontend(uri: Uri) -> impl IntoResponse {
         path = "index.html".to_string();
     }
 
-    match FrontendAssets::get(&path) {
-        Some(content) => {
-            let mime = from_path(&path).first_or_octet_stream();
-            ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
-        }
-        None => {
-            // Client-side routing fallback: if file not found, return 404.html (or index.html)
-            if let Some(fallback) = FrontendAssets::get("404.html") {
-                let mime = from_path("404.html").first_or_octet_stream();
-                ([(header::CONTENT_TYPE, mime.as_ref())], fallback.data).into_response()
-            } else {
-                (StatusCode::NOT_FOUND, "404 Not Found").into_response()
-            }
-        }
+    // 1. Try exact path (e.g. "favicon.ico" or "_next/static/...")
+    if let Some(content) = FrontendAssets::get(&path) {
+        let mime = from_path(&path).first_or_octet_stream();
+        return ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response();
+    }
+
+    // 2. Try with .html extension (e.g. "/dashboard" -> "dashboard.html")
+    let html_path = format!("{}.html", path);
+    if let Some(content) = FrontendAssets::get(&html_path) {
+        let mime = from_path(&html_path).first_or_octet_stream();
+        return ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response();
+    }
+
+    // 3. Try with /index.html (e.g. "/dashboard" -> "dashboard/index.html")
+    let index_path = format!("{}/index.html", path);
+    if let Some(content) = FrontendAssets::get(&index_path) {
+        let mime = from_path(&index_path).first_or_octet_stream();
+        return ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response();
+    }
+
+    // 4. Fallback: if file not found, return 404.html
+    if let Some(fallback) = FrontendAssets::get("404.html") {
+        let mime = from_path("404.html").first_or_octet_stream();
+        ([(header::CONTENT_TYPE, mime.as_ref())], fallback.data).into_response()
+    } else {
+        (StatusCode::NOT_FOUND, "404 Not Found").into_response()
     }
 }
 
