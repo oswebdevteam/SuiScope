@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 authors.workspace = true
+repository.workspace = true
 description = "SuiScope CLI — Move Contract Debug & Object Registry Tool"
 
 [[bin]]
@@ -11,8 +12,8 @@ name = "suiscope"
 path = "src/main.rs"
 
 [dependencies]
-suiscope-core = { path = "../core" }
-suiscope-dashboard = { path = "../dashboard" }
+suiscope-core = { version = "0.1.0", path = "../core" }
+suiscope-dashboard = { version = "0.1.0", path = "../dashboard" }
 clap = { version = "4", features = ["derive"] }
 colored = "2"
 tabled = "0.16"

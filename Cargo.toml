@@ -12,7 +12,12 @@ edition = "2021"
 license = "MIT"
 authors = ["SuiScope Team"]
 description = "Move Contract Debug & Object Registry Tool for Sui Network"
-repository = "https://github.com/suiscope/suiscope"
+repository = "https://github.com/oswebdevteam/SuiScope"
+homepage = "https://github.com/oswebdevteam/SuiScope"
+documentation = "https://docs.rs/suiscope-core"
+readme = "README.md"
+keywords = ["sui", "move", "blockchain", "debug", "web3"]
+categories = ["development-tools", "command-line-utilities"]
 
 [workspace.dependencies]
 tokio = { version = "1", features = ["full"] }

@@ -217,8 +217,6 @@ fn get_dictionary() -> &'static HashMap<&'static str, ErrorExplanation> {
             ],
         });
 
-        // contract_s intentional errors -------------------------------------------------
-
         m.insert("Amount must be greater than zero", ErrorExplanation {
             title: "Invalid Amount (contract_s E_INVALID_AMOUNT, Code 3)".into(),
             plain_english: "The amount provided must be greater than zero.".into(),
