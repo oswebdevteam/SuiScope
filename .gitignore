@@ -21,3 +21,6 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+contract_t
+contract_s

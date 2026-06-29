@@ -10,7 +10,7 @@ impl ErrorDictionary {
     pub fn lookup(error_string: &str) -> Option<ErrorExplanation> {
         let dict = get_dictionary();
 
-        // 1. Case-insensitive exact match
+        //  Case-insensitive exact match
         for (pattern, explanation) in dict.iter() {
             if error_string.eq_ignore_ascii_case(pattern) {
                 return Some(explanation.clone());
@@ -21,7 +21,7 @@ impl ErrorDictionary {
             return Self::fuzzy_match_move_abort(error_string);
         }
 
-        // 3. Case-insensitive fuzzy match without allocating a lowercase string
+        //  Case-insensitive fuzzy match without allocating a lowercase string
         for (pattern, explanation) in dict.iter() {
             if case_insensitive_contains(error_string, pattern) {
                 return Some(explanation.clone());
@@ -85,6 +85,15 @@ impl ErrorDictionary {
                         likely_causes: vec!["The contract expected a condition to be true, but it was false.".into()],
                         suggested_fixes: vec!["Check the contract source code for `assert!(..., 0)`.".into()],
                     }),
+                    (_, 3) => Some(ErrorExplanation {
+                        title: "Invalid Amount (contract_s E_INVALID_AMOUNT, Code 3)".into(),
+                        plain_english: "The amount provided must be greater than zero.".into(),
+                        likely_causes: vec![
+                            "You passed 0 as the amount argument.".into(),
+                            "A calculation resulted in a zero value being passed to the function.".into(),
+                        ],
+                        suggested_fixes: vec!["Provide a positive integer for the amount parameter.".into()],
+                    }),
                     _ => Some(ErrorExplanation {
                         title: format!("Move Abort in '{}' (Code {})", module_name, code),
                         plain_english: "The smart contract aborted execution intentionally.".into(),
@@ -119,6 +128,15 @@ impl ErrorDictionary {
                         plain_english: "The coin object provided doesn't have enough balance or is the wrong type.".into(),
                         likely_causes: vec!["You are trying to pay for something with a coin that doesn't hold enough SUI.".into()],
                         suggested_fixes: vec!["Merge your coin objects or use a different one.".into()],
+                    }),
+                    3 => Some(ErrorExplanation {
+                        title: "Invalid Amount (contract_s E_INVALID_AMOUNT, Code 3)".into(),
+                        plain_english: "The amount provided must be greater than zero.".into(),
+                        likely_causes: vec![
+                            "You passed 0 as the amount argument.".into(),
+                            "A calculation resulted in a zero value being passed to the function.".into(),
+                        ],
+                        suggested_fixes: vec!["Provide a positive integer for the amount parameter.".into()],
                     }),
                     _ => Some(ErrorExplanation {
                         title: format!("Move Abort (Code {})", code),
@@ -199,6 +217,20 @@ fn get_dictionary() -> &'static HashMap<&'static str, ErrorExplanation> {
             ],
         });
 
+        // contract_s intentional errors -------------------------------------------------
+
+        m.insert("Amount must be greater than zero", ErrorExplanation {
+            title: "Invalid Amount (contract_s E_INVALID_AMOUNT, Code 3)".into(),
+            plain_english: "The amount provided must be greater than zero.".into(),
+            likely_causes: vec![
+                "You passed 0 as the amount argument.".into(),
+                "A calculation resulted in a zero value being passed to the function.".into(),
+            ],
+            suggested_fixes: vec![
+                "Provide a positive integer for the amount parameter.".into(),
+            ],
+        });
+
         m
     })
 }
@@ -232,6 +264,14 @@ mod tests {
         let err = "MoveAbort(MoveLocation { module: ModuleId { address: 000...2, name: Identifier(\"object\") }, function: 1, instruction: 10, function_name: Some(\"new\") }, 999)";
         let expl = ErrorDictionary::lookup(err).unwrap();
         assert_eq!(expl.title, "Move Abort in 'object' (Code 999)");
+    }
+
+
+
+    #[test]
+    fn test_contract_s_invalid_amount() {
+        let expl = ErrorDictionary::lookup("Amount must be greater than zero").unwrap();
+        assert_eq!(expl.title, "Invalid Amount (contract_s E_INVALID_AMOUNT, Code 3)");
     }
 }
 

@@ -80,9 +80,8 @@ impl fmt::Display for SuiNetwork {
 
 
 
-// ---------------------------------------------------------------------------
+
 // Registry types (mirror SQLite rows)
-// ---------------------------------------------------------------------------
 
 /// A tracked on-chain object stored in the local registry.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -131,9 +130,8 @@ pub struct ErrorEntry {
     pub created_at: Option<String>,
 }
 
-// ---------------------------------------------------------------------------
+
 // Publish output types
-// ---------------------------------------------------------------------------
 
 /// A single object change extracted from `sui client publish --json` output.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,9 +157,8 @@ pub struct PublishResult {
     pub raw_json: String,
 }
 
-// ---------------------------------------------------------------------------
+
 // Inspect types
-// ---------------------------------------------------------------------------
 
 /// Structured result of inspecting an object via JSON-RPC.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,9 +174,7 @@ pub struct InspectResult {
     pub content: Option<serde_json::Value>,
 }
 
-// ---------------------------------------------------------------------------
 // Error explanation types
-// ---------------------------------------------------------------------------
 
 /// A human-readable explanation for a cryptic error.
 #[derive(Debug, Clone, Serialize, Deserialize)]

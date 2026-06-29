@@ -15,24 +15,24 @@ pub fn parse_publish_output(json_str: &str) -> Result<PublishResult> {
             "Invalid JSON from sui client publish: {e}"
         )))?;
 
-    // ---- Transaction digest ----
+    // Transaction digest
     let tx_digest = root
         .get("digest")
         .and_then(|v| v.as_str())
         .ok_or_else(|| SuiScopeError::Parse("Missing 'digest' in publish output".into()))?
         .to_string();
 
-    // ---- Status ----
+    // Status
     let status = root
         .pointer("/effects/status/status")
         .and_then(|v| v.as_str())
         .unwrap_or("unknown")
         .to_string();
 
-    // ---- Gas used (sum computation + storage − rebate) ----
+    // Gas used (sum computation + storage − rebate)
     let gas_used = parse_gas_used(&root);
 
-    // ---- Object changes ----
+    // Object changes
     let mut package_id: Option<String> = None;
     let mut created_objects: Vec<ObjectChange> = Vec::new();
 
@@ -179,9 +179,8 @@ fn normalize_change_owner(owner: Option<&Value>) -> Option<String> {
     }
 }
 
-// ---------------------------------------------------------------------------
+
 // Tests
-// ---------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
