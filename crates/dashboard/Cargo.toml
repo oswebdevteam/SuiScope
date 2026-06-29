@@ -6,6 +6,7 @@ license.workspace = true
 authors.workspace = true
 repository.workspace = true
 description = "SuiScope Dashboard — Local web UI for the object registry"
+build = "build.rs"
 
 [[bin]]
 name = "suiscope-dashboard"
@@ -21,3 +22,5 @@ tracing.workspace = true
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tower-http = { version = "0.5", features = ["cors", "fs"] }
 anyhow = "1"
+rust-embed = "8.4"
+mime_guess = "2.0"

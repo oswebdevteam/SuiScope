@@ -7,15 +7,45 @@ use serde_json::{json, Value};
 use suiscope_core::{Registry, SuiRpcClient, SuiScopeConfig, WalrusClient};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
-use tower_http::{
-    cors::{Any, CorsLayer},
-    services::{ServeDir, ServeFile},
+use tower_http::cors::{Any, CorsLayer};
+use rust_embed::RustEmbed;
+use mime_guess::from_path;
+use axum::{
+    http::{header, StatusCode, Uri},
+    response::{IntoResponse},
 };
 use tracing::info;
 
 
 struct AppState {
     registry: Mutex<Registry>,
+}
+
+#[derive(RustEmbed)]
+#[folder = "public/"]
+struct FrontendAssets;
+
+async fn serve_frontend(uri: Uri) -> impl IntoResponse {
+    let mut path = uri.path().trim_start_matches('/').to_string();
+    if path.is_empty() {
+        path = "index.html".to_string();
+    }
+
+    match FrontendAssets::get(&path) {
+        Some(content) => {
+            let mime = from_path(&path).first_or_octet_stream();
+            ([(header::CONTENT_TYPE, mime.as_ref())], content.data).into_response()
+        }
+        None => {
+            // Client-side routing fallback: if file not found, return 404.html (or index.html)
+            if let Some(fallback) = FrontendAssets::get("404.html") {
+                let mime = from_path("404.html").first_or_octet_stream();
+                ([(header::CONTENT_TYPE, mime.as_ref())], fallback.data).into_response()
+            } else {
+                (StatusCode::NOT_FOUND, "404 Not Found").into_response()
+            }
+        }
+    }
 }
 
 /// Start the SuiScope dashboard server on the given port.
@@ -46,11 +76,8 @@ pub async fn start(port: u16) -> anyhow::Result<()> {
         .route("/api/walrus/upload", post(walrus_upload))
         .route("/api/walrus/import/:blob_id", get(walrus_import))
 
-        // Serve the statically exported Next.js frontend
-        .fallback_service(
-            ServeDir::new("frontend/out")
-                .not_found_service(ServeFile::new("frontend/out/404.html")),
-        )
+        // Serve the statically embedded Next.js frontend
+        .fallback(get(serve_frontend))
         .layer(cors)
         .with_state(state);
 
