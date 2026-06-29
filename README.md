@@ -2,7 +2,7 @@
 
 **Move Contract Debug & Object Registry Tool for Sui Network**
 
-Built with Rust · CLAY Hackathon 2026
+Built with Rust ·
 
 ---
 
@@ -19,8 +19,8 @@ SuiScope closes this gap entirely.
 ## Quick Start
 
 ```bash
-# Build from source
-cargo build --workspace
+# Install globally from crates.io
+cargo install suiscope-cli
 
 # Initialize SuiScope in your Move project
 suiscope init
@@ -77,7 +77,17 @@ suiscope/
 | Sync | Walrus | Cross-machine registry sync via decentralized storage |
 | Chain | Sui Testnet | Live deployment and demo environment |
 
-## Building
+## Installation
+
+The easiest way to install SuiScope is via crates.io:
+
+```bash
+cargo install suiscope-cli
+```
+
+## Building from Source
+
+If you want to build from source or contribute to the project:
 
 ```bash
 # Build all crates
@@ -85,9 +95,6 @@ cargo build --workspace
 
 # Run with clippy checks
 cargo clippy --workspace -- -D warnings
-
-# Install the CLI globally
-cargo install --path crates/cli
 ```
 
 ## Configuration
@@ -117,4 +124,4 @@ MIT
 
 ---
 
-**SuiScope · CLAY Hackathon 2026 · Built with intention. Shipped in Rust.**
+**SuiScope · Built with intention. Shipped in Rust.**
